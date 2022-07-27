@@ -14,7 +14,7 @@ module Experian
   class << self
 
     attr_accessor :eai, :preamble, :op_initials, :subcode, :user, :password, :vendor_number
-    attr_accessor :test_mode
+    attr_accessor :test_mode, :proxy_url, :use_proxy_url
 
     def configure
       yield self
@@ -24,7 +24,7 @@ module Experian
       !!test_mode
     end
 
-    def ecals_uri
+    def default_ecals_uri
       uri = URI(Experian::LOOKUP_SERVLET_URL)
       uri.query = URI.encode_www_form(
         'lookupServiceName' => Experian::LOOKUP_SERVICE_NAME,
@@ -36,21 +36,38 @@ module Experian
       uri
     end
 
-    def net_connect_uri
-      perform_ecals_lookup if ecals_lookup_required?
+    def net_connect_uri(options = {})
+      ecals_uri = options.fetch(:ecals_uri, nil)
+      if ecals_lookup_required?
+        if ecals_uri.present?
+          perform_ecals_lookup(ecals_uri)
+        else
+          perform_ecals_lookup
+        end
+      end
+
+      user = options.fetch(:user, nil)
+      password = options.fetch(:password, nil)
 
       # setup basic authentication
-      @net_connect_uri.user = Experian.user
-      @net_connect_uri.password = Experian.password
+      @net_connect_uri.user = user
+      @net_connect_uri.password = password
 
       @net_connect_uri
     end
 
-    def perform_ecals_lookup
-      @net_connect_uri = URI.parse(Excon.get(ecals_uri.to_s).body)
+    def perform_ecals_lookup(ecals_uri = nil)
+      if ecals_uri.blank?
+        ecals_uri = default_ecals_uri
+      end
+      curl = ::Experian::Client.start_curl(ecals_uri.to_s)
+      curl.http_get
+      body = curl.body_str.strip
+      @net_connect_uri = URI.parse(body)
+      p "ECALS URL: #{@net_connect_uri}"
       assert_experian_domain
       @ecals_last_update = Time.now
-    rescue Excon::Errors::SocketError => e
+    rescue ::Curl::Easy::Error => e
       raise Experian::ClientError, "Could not connect to Experian: #{e.message}"
     end
 
