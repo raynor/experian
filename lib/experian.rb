@@ -1,4 +1,3 @@
-require "excon"
 require "builder"
 require "experian/version"
 require "experian/constants"
