@@ -6,6 +6,7 @@ require "experian/client"
 require "experian/request"
 require "experian/response"
 require "experian/connect_check"
+require 'experian/credit_profile'
 
 module Experian
   include Experian::Constants
