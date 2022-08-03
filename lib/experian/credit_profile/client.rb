@@ -12,7 +12,6 @@ module Experian
         return if options[:first_name] && options[:last_name] && options[:street] && options[:zip]
         raise Experian::ArgumentError, 'Required options missing: first_name, last_name, ssn OR first_name, last_name, street, zip'
       end
-
-   end
+    end
   end
 end
